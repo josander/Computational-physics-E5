@@ -6,137 +6,110 @@
 #include <math.h>
 #include <stdlib.h>
 #include "E5_func.h"
-#include "fft_func.h"
 #define PI 3.141592653589
-# define kB 0.000086173324
+#define kB 0.000086173324
+#define c 299792458 // Units: [m/s]
 
 /* Main program */
 int main()
 {
 
 	// Declaration of variables
-	int i, j, k;
-	double ny;
-	double omega;
-	double c0;
-	double m;
-	double temp;
-	double dt;
-	double timesteps;
-	double r1, r2;
-	double g1, g2;
-	double x, v, a;
-	int lags;
-
+	int j, n;
+	double r;
+	double epsilon;
+	double L;
+	double a0, alpha;
+	int J = 100;
+	int x = 101;
+	int timesteps = 10000;
+	double **y = malloc(x*(timesteps + 1)*sizeof(double));
+	
 	// Initiation of variables
-	omega = 0.5;
-	ny = 2.5 * omega;
-	c0 = exp(-ny * dt);
-	m = 1;
-	temp = 300;
-	dt = 0.05;
-	timesteps = 2000;
-	x = 1.0;
-	v = 0;
-	a = 0;
-	double X[2001];
-	X[0] = x;
+	a0 = 0.05; // Units: [m]
+	alpha = 0.1;
+	epsilon = 3.8 * pow(10,-5);
+	r = 0.15;
+	L = 0.62; // Units: [m]
 
-	/* fft vectors */
-	double *fft_data = malloc((timesteps+1) * sizeof (double));
-	double *freq = malloc((timesteps+1) * sizeof (double));
-	double *corr_func = malloc((timesteps-500+1) * sizeof(double));
+	// Create files
+	FILE *a_file;
+	a_file = fopen("amplitude.data","w");
+
+	// Initiation of y
+	for(j = 0; j < x; j++){
 	
-
-	// Seed for generating random numbers
-	srand(time(NULL));
-
-	// File to print distributions
-	FILE *dist;
-	dist = fopen("distribution.data","w");	
-
-	// File to print the trajectory
-	FILE *tr;
-	tr = fopen("trajectory.data","w");	
-
-	// File to print the trajectory
-	FILE *corr;
-	corr = fopen("corrfunc.data","w");	
-
-	// Calc initial acceleration
-	a = acceleration(v, x, ny, omega);
-
-	// Time evolution
-	for(i = 1; i < timesteps; i++){
-
-		// Generate two random numbers with uniform distribution
-		r1 = (double) rand() / RAND_MAX;
-		r2 = (double) rand() / RAND_MAX;
-
-		// Bow-Muller transformation to get random variables with standard normal distribution
-		g1 = sqrt(-2 * log(r1)) * cos(2 * PI * r2);
-		g2 = sqrt(-2 * log(r1)) * sin(2 * PI * r2);
-
-		// Print all random variables
-		fprintf(dist, "%f \t %f \t %f \t %f \n", r1, r2, g1, g2);
-	
-		// v(t+)
-		v = sqrt(c0)*v + sqrt(kB * temp / m) * sqrt(1-c0)*g1;
-	
-		// v(t + dt/2)
-		v = v + a * dt / 2;
-	
-		// x(t + dt)
-		x = x + v * dt;
-
-		// Calc new acceleration
-		a = acceleration(v, x, ny, omega);
-
-		// v(t- + dt)
-		v = v + a * dt / 2;
-
-		// v(t + dt)
-		v = sqrt(c0) * v + sqrt(kB * temp / m) * sqrt(1-c0)*g2;
-
-		// Print the trajectory
-		fprintf(tr, "%f \n", x);
-
-		X[i] = x;
-
-	}
-
-	/* make FFT (powerspectrum) */
-	fft(X, fft_data, timesteps+1);
-	fft_shift(fft_data, timesteps+1); 
-	fft_freq_shift(freq, dt, timesteps+1);
-
-	/* Print powerspectrum to file */
-	FILE *fft_file;
-        fft_file = fopen("fft.data","w");
-	for (i = 0; i < timesteps; i++){
-		fprintf (fft_file,"%e \t %e \n", freq[i], fft_data[i]);
-	}
-	fclose(fft_file);
-
-	// Calculate the correlation function
-	for(i = 0; i < timesteps-500; i++){
-		for(k = 0; k < 500; k++){
-			corr_func[k] += (X[i]*X[i+k])/(timesteps-500);
+		// If 0<i<alpha*x
+		if(j < alpha*100){
+			y[j][0] = (double) a0 * j/(alpha*100);
+			y[j][1] = (double) a0 * j/(alpha*100);
+		
+		// If alpha*x <= i < x
+		}else{ 
+			y[j][0] = (double) a0 * (1 - j/100.0) / (1 - alpha);
+			y[j][1] = (double) a0 * (1 - j/100.0) / (1 - alpha);
 		}
 	}
 
-	for(k = 0; k < 500; k++){
-		fprintf(corr,"%f\n", corr_func[k]);
+	// Save initial values
+	for(j = 0; j < x; j++){
+		// Print result in file
+		fprintf(a_file, "%f\t", y[j][0]);
 	}
 
+	fprintf(a_file, "\n");
 
-	// Close files
-	fclose(dist);
-	fclose(tr);
-	fclose(corr);
+	// Save initial values
+	for(j = 0; j < x; j++){
+		// Print result in file
+		fprintf(a_file, "%f\t", y[j][1]);
+	}
 
-	free(fft_data); free(freq); free(corr_func);
-	fft_data = NULL; freq = NULL; corr_func = NULL;
+	fprintf(a_file, "\n");
+
+	// For each timestep and every lattice point, calculate the ampl in next timestep
+	for(n = 1; n < timesteps + 1; n++){
+
+		y[0][n+1] = 0;
+		y[x - 1][n+1] = 0;
+
+		fprintf(a_file, "%f\t", y[0][n+1]);
+		
+		for(j = 1; j < x - 1; j++){
+			
+			// If lattice point x=2, set y(x-2) = y(0) = 0
+			if(j == 1){
+
+			y[j][n+1] = (2-(2*r*r)-(6*epsilon*r*r*J*J))*y[j][n] - y[j][n-1] + r*r*(1+(4*epsilon*J*J))*(y[j+1][n]+y[j-1][n])-(epsilon*r*r*J*J*y[j+2][n]); 
+
+			// If lattice point x=100, set y(x+2) = y(102) = 0
+			}else if(j == x - 2){
+
+			y[j][n+1] = (2-(2*r*r)-(6*epsilon*r*r*J*J))*y[j][n] - y[j][n-1] + r*r*(1+(4*epsilon*J*J))*(y[j+1][n]+y[j-1][n])-(epsilon*r*r*J*J*y[j-2][n]); 
+
+			}else{
+
+			y[j][n+1] = (2-(2*r*r)-(6*epsilon*r*r*J*J))*y[j][n] - y[j][n-1] + r*r*(1+(4*epsilon*J*J))*(y[j+1][n]+y[j-1][n])-epsilon*r*r*J*J*(y[j+2][n] + y[j-2][n]); 
+
+			}
+
+		// Print result in file
+		fprintf(a_file, "%f\t", y[j][n+1]);
+
+		}
+
+		fprintf(a_file, "%f\t", y[x - 1][n+1]);
+
+		fprintf(a_file, "\n");
+
+
+	}
+
+	free(y);
+	y = NULL;
+
+	// Close file
+	fclose(a_file);
 
 }
 
