@@ -22,15 +22,26 @@ int main()
 	double a0, alpha;
 	int J = 100;
 	int x = 101;
-	int timesteps = 10000;
-	double **y = malloc(x*(timesteps + 1)*sizeof(double));
+	int timesteps = 20000;
+	double **y = malloc(x * sizeof(double));
+	for(j = 0; j < x; j++){
+		y[j] = malloc((timesteps+1) * sizeof(double));
+	}
+
+	// Characteristic values for different notes
+	double epsilonC2 = 7.5 * pow(10,-6);
+	double epsilonC4 = 3.8 * pow(10,-5);
+	double epsilonC7 = 8.7 * pow(10,-4);
+	double LC2 = 1.9;
+	double LC4 = 0.62;
+	double LC7 = 0.09;
 	
 	// Initiation of variables
 	a0 = 0.05; // Units: [m]
 	alpha = 0.1;
-	epsilon = 3.8 * pow(10,-5);
-	r = 0.15;
-	L = 0.62; // Units: [m]
+	epsilon = epsilonC7;
+	r = 0.1;
+	L = LC7; // Units: [m]
 
 	// Create files
 	FILE *a_file;
@@ -104,9 +115,6 @@ int main()
 
 
 	}
-
-	free(y);
-	y = NULL;
 
 	// Close file
 	fclose(a_file);
