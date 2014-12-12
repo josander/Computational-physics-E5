@@ -4,8 +4,8 @@ CFLAGS = -O3
 LIBS = -lm -lgsl -lgslcblas
 
 
-HEADERS = fft_func.h E5_func.h
-OBJECTS = fft_func.o E5_func.o E5_main.o 
+HEADERS = E5_func.h
+OBJECTS = E5_func.o E5_main.o 
 PROGRAM = E5
 
 %.o: %.c $(HEADERS)
