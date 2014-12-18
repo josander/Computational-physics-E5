@@ -39,13 +39,13 @@ int main()
 	// Initiation of variables
 	a0 = 0.05; // Units: [m]
 	alpha = 0.1;
-	epsilon = epsilonC7;
+	epsilon = 1.0 * epsilonC2;
 	r = 0.1;
-	L = LC7; // Units: [m]
+	L = LC2; // Units: [m]
 
 	// Create files
 	FILE *a_file;
-	a_file = fopen("amplitude.data","w");
+	a_file = fopen("amplitudeC2-e.data","w");
 
 	// Initiation of y
 	for(j = 0; j < x; j++){
