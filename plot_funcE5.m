@@ -20,6 +20,14 @@ for t=1:length(ampData)
 end
 
 axis([0 1 0 1])
+%% Find detlta-t
+
+L = [1.9 0.62 0.09];
+c = [250 330 380];
+
+delta_t = 0.1*L./(100*c);
+
+
 
 %% Powerspectrum
 
